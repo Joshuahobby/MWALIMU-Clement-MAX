@@ -1,0 +1,36 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="60" cy="60" r="58" fill="#2563eb" stroke="#1d4ed8" stroke-width="2"/>
+
+  <!-- Graduation Cap -->
+  <path d="M30 45 L60 35 L90 45 L90 50 L85 52 L85 60 C85 65 75 68 60 68 C45 68 35 65 35 60 L35 52 Z" fill="#f59e0b"/>
+  <path d="M30 45 L60 35 L90 45 L60 40 Z" fill="#fbbf24"/>
+
+  <!-- Tassel -->
+  <rect x="88" y="48" width="2" height="8" fill="#374151"/>
+  <circle cx="89" cy="58" r="2" fill="#ef4444"/>
+
+  <!-- Steering Wheel -->
+  <circle cx="60" cy="75" r="18" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <circle cx="60" cy="75" r="12" fill="none" stroke="#ffffff" stroke-width="2"/>
+  <line x1="48" y1="75" x2="72" y2="75" stroke="#ffffff" stroke-width="2"/>
+  <line x1="60" y1="63" x2="60" y2="87" stroke="#ffffff" stroke-width="2"/>
+
+  <!-- Book -->
+  <rect x="45" y="85" width="30" height="20" rx="2" fill="#ffffff"/>
+  <rect x="47" y="87" width="26" height="16" rx="1" fill="#e5e7eb"/>
+  <line x1="50" y1="90" x2="67" y2="90" stroke="#6b7280" stroke-width="1"/>
+  <line x1="50" y1="93" x2="65" y2="93" stroke="#6b7280" stroke-width="1"/>
+  <line x1="50" y1="96" x2="62" y2="96" stroke="#6b7280" stroke-width="1"/>
+
+  <!-- Text Curve -->
+  <defs>
+    <path id="textcircle" d="M 20,60 A 40,40 0 0,1 100,60"/>
+  </defs>
+  <text font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#ffffff">
+    <textPath href="#textcircle">MWALIMU CLEMENT</textPath>
+  </text>
+
+  <!-- Bottom text -->
+  <text x="60" y="110" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#1d4ed8">DRIVING SCHOOL</text>
+</svg>
