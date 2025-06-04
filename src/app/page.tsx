@@ -21,13 +21,25 @@ export default function HomePage() {
   const [paymentId, setPaymentId] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Check if user is already logged in
-    const user = PaymentService.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-    }
+    const checkUser = async () => {
+      try {
+        setIsLoading(true);
+        const user = await PaymentService.getCurrentUser();
+        if (user) {
+          setCurrentUser(user);
+        }
+      } catch (error) {
+        console.error('Error checking user:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkUser();
   }, []);
 
   const openPaymentModal = () => {
@@ -84,7 +96,7 @@ export default function HomePage() {
       }
 
       setPaymentId(data.payment.id);
-      setPaymentStatus('Kwishyura kuzatangura. Reba message kuri terefone yawe...');
+      setPaymentStatus('Kwishyura byatangiye. Reba message kuri terefone yawe...');
 
       // Poll for payment status
       pollPaymentStatus(data.payment.id);
@@ -197,11 +209,18 @@ export default function HomePage() {
     }
   };
 
-  const logout = () => {
-    PaymentService.logout();
-    setCurrentUser(null);
-    setSuccess('');
-    setError('');
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await PaymentService.logout();
+      setCurrentUser(null);
+      setSuccess('');
+      setError('');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const closeModals = () => {
@@ -218,6 +237,17 @@ export default function HomePage() {
     // Redirect to test page (to be implemented)
     alert('Ikizamini kizatangura vuba! (Test functionality to be implemented)');
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-700">Gutegereza...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (currentUser) {
     const hasValidAccess = PaymentService.checkUserAccess(currentUser);
@@ -248,61 +278,73 @@ export default function HomePage() {
                 src="/mwalimu-clement-logo.svg"
                 alt="MWALIMU Clement Logo"
                 className="w-32 h-32 mx-auto mb-4"
+                onError={(e) => {
+                  e.currentTarget.src = 'https://placehold.co/200x200?text=LOGO';
+                }}
               />
-              <h5 className="text-lg font-semibold mb-2 text-green-600">
-                Mwiriwe mwiza! Muri mwariho.
-              </h5>
-              <div className="text-gray-600 space-y-1">
-                <p><strong>Terefone:</strong> {currentUser.phone}</p>
-                <p><strong>Subscription:</strong> {currentUser.subscriptionType}</p>
-                {currentUser.subscriptionExpiry && (
-                  <p><strong>Expires:</strong> {new Date(currentUser.subscriptionExpiry).toLocaleDateString()}</p>
-                )}
+              <h1 className="text-2xl font-bold text-blue-800">MWALIMU Clement</h1>
+              <p className="text-gray-600">Online Driving Test Platform</p>
+            </div>
+
+            <div className="border-t border-b py-4 my-4">
+              <div className="mb-2">
+                <span className="text-gray-600">Phone:</span>
+                <span className="ml-2 font-medium">{currentUser.phone}</span>
+              </div>
+              {currentUser.subscriptionType && (
+                <>
+                  <div className="mb-2">
+                    <span className="text-gray-600">Subscription:</span>
+                    <span className="ml-2 font-medium capitalize">{currentUser.subscriptionType}</span>
+                  </div>
+                  <div className="mb-2">
+                    <span className="text-gray-600">Expires:</span>
+                    <span className="ml-2 font-medium">
+                      {currentUser.subscriptionExpiry
+                        ? new Date(currentUser.subscriptionExpiry).toLocaleString('en-GB')
+                        : 'N/A'}
+                    </span>
+                  </div>
+                </>
+              )}
+              <div className="mt-3">
+                <span
+                  className={`inline-block px-3 py-1 rounded-full text-sm ${
+                    hasValidAccess ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}
+                >
+                  {hasValidAccess ? 'Bishyurwa' : 'Ntibishyurwa'}
+                </span>
               </div>
             </div>
 
             {hasValidAccess ? (
-              <div className="space-y-4">
-                <button
-                  onClick={startTest}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded font-medium"
-                >
-                  Tangira Ikizamini
-                </button>
-                <button
-                  onClick={logout}
-                  className="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded font-medium"
-                >
-                  Gusohoka
-                </button>
-              </div>
+              <button
+                onClick={startTest}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors mb-4"
+              >
+                Tangira Ikizamini
+              </button>
             ) : (
-              <div className="space-y-4">
-                <p className="text-red-600 text-center">Subscription yawe yarangiye. Nyabuneka wishyure ukongere.</p>
-                <button
-                  onClick={() => { logout(); openPaymentModal(); }}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded font-medium"
-                >
-                  Wishyure Ukongere
-                </button>
-                <button
-                  onClick={logout}
-                  className="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded font-medium"
-                >
-                  Gusohoka
-                </button>
-              </div>
+              <button
+                onClick={openPaymentModal}
+                className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition-colors mb-4"
+              >
+                Ishyura kongere
+              </button>
             )}
+
+            <button
+              onClick={logout}
+              className="w-full border border-gray-300 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors"
+            >
+              Sohoka
+            </button>
+
+            {error && <div className="mt-4 text-red-600 text-center">{error}</div>}
+            {success && <div className="mt-4 text-green-600 text-center">{success}</div>}
           </div>
         </div>
-
-        {/* Footer */}
-        <footer className="bg-gray-100 py-4">
-          <div className="container mx-auto px-4 text-center text-gray-600">
-            <span>© 2025. <span className="text-blue-600">Online test</span> by <span className="text-blue-600">MWALIMU Clement</span></span>
-            <span className="ml-8">Support ☎ +250787179869</span>
-          </div>
-        </footer>
       </div>
     );
   }
@@ -328,56 +370,54 @@ export default function HomePage() {
         }}
       >
         <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
-          <p className="text-blue-600 text-center mb-4">
-            Support ☎ +250787179869
-          </p>
-
           <div className="text-center mb-6">
             <img
               src="/mwalimu-clement-logo.svg"
               alt="MWALIMU Clement Logo"
               className="w-32 h-32 mx-auto mb-4"
+              onError={(e) => {
+                e.currentTarget.src = 'https://placehold.co/200x200?text=LOGO';
+              }}
             />
-            <h5 className="text-lg font-semibold mb-2">
-              Imenyereze gukora ikizamini cya provisoire mu buryo bwa Online.
-            </h5>
-            <div className="text-gray-600 space-y-1">
-              <p>Kwimenyereza byoroshye !.</p>
-              <p><strong><i>Ikizamini kimwe ni 100 RWF gusa.</i></strong></p>
-              <p><strong><i>Umunsi wose ni 1,000 RWF gusa.</i></strong></p>
-              <p><strong><i>Icyumweru cyose ni 4,000 RWF gusa.</i></strong></p>
-              <p><strong><i>Ukwezi kwose ni 10,000 RWF gusa.</i></strong></p>
-              <p>Urashobora gukora ikizamini mururimi ushaka (Kinyarwanda, Icyongereza cyangwa Igifaransa)</p>
-              <p>Wakwishyura ukoresheje MTN mobile money cyangwa Airtel Money</p>
-            </div>
+            <h1 className="text-2xl font-bold text-blue-800">MWALIMU Clement</h1>
+            <p className="text-gray-600">Online Driving Test Platform</p>
           </div>
 
-          {/* Display success/error messages */}
-          {success && (
-            <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-              {success}
-            </div>
-          )}
+          {/* Pricing Options */}
+          <div className="grid grid-cols-2 gap-4">
+            {PAYMENT_PLANS.map((plan, index) => (
+              <div
+                key={plan.type}
+                className="border rounded-lg p-4 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                onClick={() => selectPaymentPlan(index, plan.type)}
+              >
+                <div className="text-2xl font-bold text-blue-800">{plan.price} RWF</div>
+                <div className="text-gray-600">{plan.description}</div>
+              </div>
+            ))}
+          </div>
 
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
-            </div>
-          )}
-
-          <div className="flex gap-4">
+          <div className="mt-6 grid grid-cols-2 gap-4">
             <button
               onClick={openPaymentModal}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-medium flex-1"
+              className="bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
             >
               Ishyura utangire
             </button>
             <button
               onClick={openCodeModal}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium flex-1"
+              className="border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors"
             >
               Koresha code
             </button>
+          </div>
+
+          {error && <div className="mt-4 text-red-600 text-center">{error}</div>}
+          {success && <div className="mt-4 text-green-600 text-center">{success}</div>}
+
+          <div className="mt-8 text-center text-sm text-gray-500">
+            <p>Need help? Call +250787179869</p>
+            <p className="mt-1">&copy; {new Date().getFullYear()} MWALIMU Clement</p>
           </div>
         </div>
       </div>
@@ -385,85 +425,80 @@ export default function HomePage() {
       {/* Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-screen overflow-y-auto">
-            {!selectedPayment && !isProcessing && (
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold">Hitamo uburyo bwo kwishyura</h3>
-                  <button onClick={closeModals} className="text-gray-500 hover:text-gray-700 text-xl">✕</button>
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Ishyura</h2>
+              <button onClick={closeModals} className="text-gray-500 hover:text-gray-700">
+                &times;
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="mb-2">Hitamo uburyo bwo kwishyura:</p>
+              <div className="grid grid-cols-2 gap-2">
+                {PAYMENT_PLANS.map((plan, index) => (
+                  <div
+                    key={plan.type}
+                    className={`border rounded p-2 text-center cursor-pointer ${
+                      selectedPayment?.index === index
+                        ? 'border-blue-500 bg-blue-50'
+                        : 'hover:border-gray-400'
+                    }`}
+                    onClick={() => selectPaymentPlan(index, plan.type)}
+                  >
+                    <div className="font-bold">{plan.price} RWF</div>
+                    <div className="text-sm text-gray-600">{plan.description}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {selectedPayment && (
+              <>
+                <div className="mb-4">
+                  <label className="block mb-2 text-sm font-medium">
+                    Nimero ya telefone:
+                  </label>
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="078XXXXXXX"
+                    className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    Uzohererezwa ubutumwa kuri iyi numero
+                  </p>
+                </div>
+
+                <div className="mb-4">
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <div className="font-medium">Uburyo bwo Kwishyura:</div>
+                    <div className="text-sm">
+                      {phoneNumber.startsWith('078') || phoneNumber.startsWith('079')
+                        ? 'MTN Mobile Money'
+                        : phoneNumber.startsWith('073') || phoneNumber.startsWith('072')
+                        ? 'Airtel Money'
+                        : 'Mobile Money'}
+                    </div>
+                  </div>
                 </div>
 
                 <button
-                  onClick={openCodeModal}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded mb-4"
+                  onClick={confirmPayment}
+                  disabled={isProcessing}
+                  className={`w-full py-3 rounded-lg font-medium text-white ${
+                    isProcessing ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
                 >
-                  Koresha code
+                  {isProcessing ? 'Gutegereza...' : selectedPayment.title}
                 </button>
-
-                <div className="space-y-3">
-                  {PAYMENT_PLANS.map((plan, index) => (
-                    <button
-                      key={`plan-${plan.type}-${index}`}
-                      onClick={() => selectPaymentPlan(index, plan.type)}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded text-left"
-                    >
-                      Ishyura {plan.price} RWF {plan.description}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              </>
             )}
 
-            {selectedPayment && !isProcessing && (
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold">Emeza kwishyura</h3>
-                  <button onClick={closeModals} className="text-gray-500 hover:text-gray-700 text-xl">✕</button>
-                </div>
-
-                <h4 className="text-center mb-4">{selectedPayment.title}</h4>
-
-                <input
-                  type="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="Andika nimero yawe ya terefone hano ... (078xxxxxxx)"
-                  className="w-full border border-gray-300 rounded px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  pattern="[0-9]{10}"
-                  minLength={10}
-                />
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={confirmPayment}
-                    disabled={!phoneNumber}
-                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-2 px-4 rounded"
-                  >
-                    Emeza
-                  </button>
-                  <button
-                    onClick={() => setSelectedPayment(null)}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded"
-                  >
-                    Subira inyuma
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {isProcessing && (
-              <div className="text-center p-4">
-                <div className="mb-4">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-                </div>
-                <p className="text-blue-600 mb-2">{paymentStatus}</p>
-                {paymentStatus.includes('Reba message') && (
-                  <p className="text-sm text-gray-600">
-                    Kanda *182*7*1# wishyure (MTN) cyangwa *500# (Airtel)
-                  </p>
-                )}
-              </div>
-            )}
+            {paymentStatus && <div className="mt-4 text-center text-blue-600">{paymentStatus}</div>}
+            {error && <div className="mt-4 text-red-600 text-center">{error}</div>}
+            {success && <div className="mt-4 text-green-600 text-center">{success}</div>}
           </div>
         </div>
       )}
@@ -471,46 +506,42 @@ export default function HomePage() {
       {/* Code Modal */}
       {showCodeModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Koresha code</h3>
-              <button onClick={closeModals} className="text-gray-500 hover:text-gray-700 text-xl">✕</button>
+              <h2 className="text-xl font-bold">Koresha Code</h2>
+              <button onClick={closeModals} className="text-gray-500 hover:text-gray-700">
+                &times;
+              </button>
             </div>
 
-            <h4 className="text-center mb-4">Andika numero yo kwiyandikisha (code)</h4>
-
-            <input
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="Andika code yawe hano..."
-              className="w-full border border-gray-300 rounded px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-
-            {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded mb-4 text-sm">
-                {error}
-              </div>
-            )}
+            <div className="mb-4">
+              <label className="block mb-2 text-sm font-medium">
+                Andika code yawe:
+              </label>
+              <input
+                type="text"
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                placeholder="XXXXXXXX"
+                className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 uppercase"
+              />
+            </div>
 
             <button
               onClick={codeLogin}
-              disabled={!code || isProcessing}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-2 px-4 rounded"
+              disabled={isProcessing}
+              className={`w-full py-3 rounded-lg font-medium text-white ${
+                isProcessing ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
-              {isProcessing ? 'Kwinjira...' : 'Injira →'}
+              {isProcessing ? 'Gutegereza...' : 'Emeza Code'}
             </button>
+
+            {error && <div className="mt-4 text-red-600 text-center">{error}</div>}
+            {success && <div className="mt-4 text-green-600 text-center">{success}</div>}
           </div>
         </div>
       )}
-
-      {/* Footer */}
-      <footer className="bg-gray-100 py-4">
-        <div className="container mx-auto px-4 text-center text-gray-600">
-          <span>© 2025. <span className="text-blue-600">Online test</span> by <span className="text-blue-600">MWALIMU Clement</span></span>
-          <span className="ml-8">Support ☎ +250787179869</span>
-        </div>
-      </footer>
     </div>
   );
 }

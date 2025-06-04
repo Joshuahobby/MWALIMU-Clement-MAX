@@ -1,5 +1,5 @@
 import type { Payment, PaymentPlan, User } from './types';
-import { StorageManager } from './storage';
+import { SupabaseStorage } from './supabase/storage';
 
 export const PAYMENT_PLANS: PaymentPlan[] = [
   { type: 'single', price: 100, description: 'kukizamini kimwe', duration: 1 },
@@ -29,7 +29,7 @@ export const PaymentService = {
 
     // Create payment record
     const payment: Payment = {
-      id: StorageManager.generateId(),
+      id: SupabaseStorage.generateId(),
       userId: user.id,
       amount: plan.price,
       currency: 'RWF',
@@ -40,7 +40,7 @@ export const PaymentService = {
       createdAt: new Date().toISOString(),
     };
 
-    StorageManager.savePayment(payment);
+    await SupabaseStorage.savePayment(payment);
 
     // Simulate payment processing
     this.simulatePaymentProcessing(payment.id);
@@ -49,14 +49,14 @@ export const PaymentService = {
   },
 
   async verifyPayment(paymentId: string): Promise<Payment | null> {
-    return StorageManager.getPaymentById(paymentId);
+    return SupabaseStorage.getPaymentById(paymentId);
   },
 
   async processPaymentSuccess(paymentId: string): Promise<void> {
-    const payment = StorageManager.getPaymentById(paymentId);
+    const payment = await SupabaseStorage.getPaymentById(paymentId);
     if (!payment) throw new Error('Payment not found');
 
-    const user = StorageManager.getUserById(payment.userId);
+    const user = await SupabaseStorage.getUserById(payment.userId);
     if (!user) throw new Error('User not found');
 
     // Update payment status
@@ -65,7 +65,7 @@ export const PaymentService = {
     payment.transactionId = this.generateTransactionId();
 
     // Generate access code
-    const accessCode = StorageManager.generateAccessCode();
+    const accessCode = SupabaseStorage.generateAccessCode();
     payment.accessCode = accessCode;
 
     // Update user subscription
@@ -81,7 +81,7 @@ export const PaymentService = {
 
     // Save access code
     const codeExpiry = new Date(Date.now() + (plan?.duration || 1) * 60 * 60 * 1000);
-    StorageManager.saveAccessCode({
+    await SupabaseStorage.saveAccessCode({
       code: accessCode,
       userId: user.id,
       type: payment.subscriptionType,
@@ -90,33 +90,33 @@ export const PaymentService = {
       isUsed: false,
     });
 
-    StorageManager.savePayment(payment);
-    StorageManager.saveUser(user);
+    await SupabaseStorage.savePayment(payment);
+    await SupabaseStorage.saveUser(user);
   },
 
   async processPaymentFailure(paymentId: string): Promise<void> {
-    const payment = StorageManager.getPaymentById(paymentId);
+    const payment = await SupabaseStorage.getPaymentById(paymentId);
     if (!payment) throw new Error('Payment not found');
 
     payment.status = 'failed';
     payment.completedAt = new Date().toISOString();
 
-    StorageManager.savePayment(payment);
+    await SupabaseStorage.savePayment(payment);
   },
 
   async createOrGetUser(phone: string): Promise<User> {
-    let user = StorageManager.getUserByPhone(phone);
+    let user = await SupabaseStorage.getUserByPhone(phone);
 
     if (!user) {
       user = {
-        id: StorageManager.generateId(),
+        id: SupabaseStorage.generateId(),
         phone,
         createdAt: new Date().toISOString(),
         accessCodes: [],
         paymentHistory: [],
         testHistory: [],
       };
-      StorageManager.saveUser(user);
+      await SupabaseStorage.saveUser(user);
     }
 
     return user;
@@ -126,14 +126,14 @@ export const PaymentService = {
     // Simulate payment processing time (5-10 seconds)
     const processingTime = Math.random() * 5000 + 5000;
 
-    setTimeout(() => {
+    setTimeout(async () => {
       // 90% success rate for simulation
       const isSuccess = Math.random() > 0.1;
 
       if (isSuccess) {
-        this.processPaymentSuccess(paymentId);
+        await this.processPaymentSuccess(paymentId);
       } else {
-        this.processPaymentFailure(paymentId);
+        await this.processPaymentFailure(paymentId);
       }
     }, processingTime);
   },
@@ -149,14 +149,14 @@ export const PaymentService = {
   },
 
   async loginWithCode(code: string): Promise<User | null> {
-    const accessCode = StorageManager.getAccessCodeByCode(code);
-    if (!accessCode || !StorageManager.validateAccessCode(code)) {
+    const accessCode = await SupabaseStorage.getAccessCodeByCode(code);
+    if (!accessCode || !await SupabaseStorage.validateAccessCode(code)) {
       return null;
     }
 
-    const user = StorageManager.getUserById(accessCode.userId);
+    const user = await SupabaseStorage.getUserById(accessCode.userId);
     if (user) {
-      StorageManager.setCurrentUser(user);
+      await SupabaseStorage.setCurrentUser(user);
       return user;
     }
 
@@ -164,11 +164,11 @@ export const PaymentService = {
   },
 
   logout(): void {
-    StorageManager.setCurrentUser(null);
+    SupabaseStorage.setCurrentUser(null);
   },
 
-  getCurrentUser(): User | null {
-    return StorageManager.getCurrentUser();
+  getCurrentUser(): Promise<User | null> {
+    return SupabaseStorage.getCurrentUser();
   },
 
   checkUserAccess(user: User): boolean {
